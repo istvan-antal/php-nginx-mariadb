@@ -11,6 +11,10 @@ docker run --rm -d -v `pwd`/www:/www -v `pwd`/db:/var/lib/mysql -p=3306:3306 -p=
 ```
 
 ```sh
+docker run --rm -d -v `pwd`/www:/www -v `pwd`/db:/var/lib/mysql -e MYSQL_USER=admin -e MYSQL_ROOT_PASSWORD=admin -e MYSQL_DATABASE=db -p=3306:3306 -p=8080:8080 php-app -f
+```
+
+```sh
 docker exec -it php-app sh
 ```
 
