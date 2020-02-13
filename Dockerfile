@@ -2,6 +2,14 @@
 # Based on: https://github.com/TrafeX/docker-php-nginx and https://github.com/docker-library/mariadb
 FROM ubuntu:bionic
 
+ENV PHP_VERSION 7.3
+ENV COMPOSER_VERSION 1.9.3
+# bashbrew-architectures: amd64 arm64v8 ppc64le
+ENV MARIADB_MAJOR 10.4
+ENV MARIADB_VERSION 1:10.4.12+maria~bionic
+# release-status:Stable
+# (https://downloads.mariadb.org/mariadb/+releases/)
+
 # add our user and group first to make sure their IDs get assigned consistently, regardless of whatever dependencies get added
 RUN groupadd -r mysql && useradd -r -g mysql mysql
 
@@ -75,12 +83,6 @@ RUN set -ex; \
 	rm -r "$GNUPGHOME"; \
 	apt-key list
 
-# bashbrew-architectures: amd64 arm64v8 ppc64le
-ENV MARIADB_MAJOR 10.4
-ENV MARIADB_VERSION 1:10.4.12+maria~bionic
-# release-status:Stable
-# (https://downloads.mariadb.org/mariadb/+releases/)
-
 RUN set -e;\
 	echo "deb http://ftp.osuosl.org/pub/mariadb/repo/$MARIADB_MAJOR/ubuntu bionic main" > /etc/apt/sources.list.d/mariadb.list; \
 	{ \
@@ -127,14 +129,20 @@ RUN apt update && \
 	apt -o Dpkg::Options::='--force-confnew' --force-yes -fuy install nginx supervisor software-properties-common --assume-yes && \
 	add-apt-repository ppa:ondrej/php && \
 	apt update && \
-	apt -o Dpkg::Options::='--force-confnew' --force-yes -fuy install php7.3 php7.3-curl php7.3-fpm php7.3-gd php7.3-intl php7.3-mbstring php7.3-mysql php7.3-opcache --assume-yes && \
+	apt -o Dpkg::Options::='--force-confnew' --force-yes -fuy install php$PHP_VERSION php$PHP_VERSION-curl php$PHP_VERSION-zip php$PHP_VERSION-fpm php$PHP_VERSION-gd php$PHP_VERSION-intl php$PHP_VERSION-dom php$PHP_VERSION-mbstring php$PHP_VERSION-mysql php$PHP_VERSION-opcache --assume-yes && \
+	apt -o Dpkg::Options::='--force-confnew' --force-yes -fuy install build-essential git unzip && \
 	mkdir -p /run/php && \
-	sed -i -E "s/display_errors = Off/display_errors = On/g" /etc/php/7.3/fpm/php.ini  && \
-	sed -i -E "s/upload_max_filesize = [^\s]+/upload_max_filesize = 100M/g" /etc/php/7.3/fpm/php.ini && \
-	sed -i -E "s/post_max_size = [^\s]+/post_max_size = 100M/g" /etc/php/7.3/fpm/php.ini && \
-	sed -i -E "s/max_file_uploads = [^\s]+/max_file_uploads = 25/g" /etc/php/7.3/fpm/php.ini && \
+	sed -i -E "s/display_errors = Off/display_errors = On/g" /etc/php/$PHP_VERSION/fpm/php.ini  && \
+	sed -i -E "s/upload_max_filesize = [^\s]+/upload_max_filesize = 100M/g" /etc/php/$PHP_VERSION/fpm/php.ini && \
+	sed -i -E "s/post_max_size = [^\s]+/post_max_size = 100M/g" /etc/php/$PHP_VERSION/fpm/php.ini && \
+	sed -i -E "s/max_file_uploads = [^\s]+/max_file_uploads = 25/g" /etc/php/$PHP_VERSION/fpm/php.ini && \
 	sed -i -E "s/access_log (.*);/access_log \/dev\/stdout;/g" /etc/nginx/nginx.conf && \
-	sed -i -E "s/error_log (.*);/error_log \/dev\/stderr notice;/g" /etc/nginx/nginx.conf
+	sed -i -E "s/error_log (.*);/error_log \/dev\/stderr notice;/g" /etc/nginx/nginx.conf && \
+	php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');" && \
+	php -r "if (hash_file('sha384', 'composer-setup.php') === 'e0012edf3e80b6978849f5eff0d4b4e4c79ff1609dd1e613307e16318854d24ae64f26d17af3ef0bf7cfb710ca74755a') { echo 'Installer verified'; } else { echo 'Installer corrupt'; unlink('composer-setup.php'); } echo PHP_EOL;" && \
+	php composer-setup.php --version=$COMPOSER_VERSION && \
+	php -r "unlink('composer-setup.php');" && \
+	mv composer.phar /usr/local/bin/composer
 
 # Configure supervisord
 COPY config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
