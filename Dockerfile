@@ -155,5 +155,7 @@ COPY docker-entrypoint.sh /usr/local/bin/
 ENV MYSQL_ROOT_PASSWORD root
 
 EXPOSE 3306
+
+WORKDIR /www
 # CMD ["mysqld"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
